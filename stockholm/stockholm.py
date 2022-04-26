@@ -51,7 +51,7 @@ class Stockholm(object):
         ## export file name
         self.export_file_name = 'stockholm_export'
 
-        self.index_array = ['000001.SS', '399001.SZ', '000300.SS']
+        self.index_array = ['000001.SS', '399001.SZ']
         self.sh000001 = {'Symbol': '000001.SS', 'Name': '上证指数'}
         self.sz399001 = {'Symbol': '399001.SZ', 'Name': '深证成指'}
         self.sh000300 = {'Symbol': '000300.SS', 'Name': '沪深300'}
@@ -161,6 +161,45 @@ class Stockholm(object):
                     else:
                         data['KDJ_J'] = j[idx]
                 
+            return quote_data
+
+    class CurveMatch():
+        def match_Peak(self,quote_data):
+            x = increment = 17
+            while x < len(quote_data):
+                high = max(map(lambda x: x['High'], quote_data[x-increment:x]))
+                high_index = list(map(lambda x: x['High'], quote_data[x-increment:x])).index(high)
+                low = min(map(lambda x: x['Low'], quote_data[x-increment:x]))
+                low_index = list(map(lambda x: x['Low'], quote_data[x-increment:x])).index(low)
+                condition = []
+                if(low_index<high_index):
+                    condition.append(high-low>0.1*low)
+                    red_count = 0
+                    green_count = 0
+                    for data in quote_data[low_index:high_index+1]:
+                        if data['Close']-data['Open']>0:
+                            red_count += 1
+                    condition.append((red_count)/(high_index-low_index+1)>0.7)
+                    for data in quote_data[high_index+1:x]:
+                        if data['Close']-data['Open']<=0:
+                            green_count += 1
+                    # if(quote_data[x]['Date']=='2021-11-09'):
+                    #     print(1111)
+                    #     print(x>high_index+1)
+                    #     print(green_count)
+                    #     print(len(quote_data[high_index+1:x]))
+                    condition.append(x>high_index+1 and (green_count)/len(quote_data[high_index+1:x])>0.6)
+                    condition.append((quote_data[x]['High']-quote_data[x]['Open'])/quote_data[x]['Open']>0.04)
+                else:
+                    condition = [False,False,False,False]
+                quote_data[x]['match_Peak'] = condition[0] and condition[1] and condition[2] and condition[3]
+                # if(quote_data[x]['Date']=='2021-11-09'):
+                #     print(condition[0])
+                #     print(condition[1])
+                #     print(condition[2])
+                #     print(condition[3])
+
+                x += 1
             return quote_data
 
     def load_all_quote_symbol(self):
@@ -314,7 +353,7 @@ class Stockholm(object):
 
     def data_process(self, all_quotes):
         print("data_process start..." + "\n")
-        
+        cm = self.CurveMatch()
         kdj = self.KDJ()
         start = timeit.default_timer()
         
@@ -403,11 +442,12 @@ class Stockholm(object):
                     print(e)
                     print(quote)
 
-        ## calculate KDJ
+        ## calculate KDJ,CurveMatch
         for quote in all_quotes:
             if('Data' in quote):
                 try:
                     kdj.getKDJ(quote['Data'])
+                    cm.match_Peak(quote['Data'])
                 except KeyError as e:
                     print("Key Error")
                     print(e)
@@ -540,7 +580,6 @@ class Stockholm(object):
 
     def profit_test(self, selected_quotes, target_date):
         print("profit_test start..." + "\n")
-        
         start = timeit.default_timer()
         
         results = []
@@ -584,6 +623,9 @@ class Stockholm(object):
             test['MA_10'] = quote['Data'][target_idx]['MA_10']
             test['MA_20'] = quote['Data'][target_idx]['MA_20']
             test['MA_30'] = quote['Data'][target_idx]['MA_30']
+            test['match_Peak'] = quote['Data'][target_idx]['match_Peak']
+            if(test['match_Peak']!='false'):
+                print(test)
             test['Data'] = [{}]
 
             for i in range(1,11):
@@ -593,7 +635,7 @@ class Stockholm(object):
 
                 day2day_profit = self.get_profit_rate(quote['Data'][target_idx]['Close'], quote['Data'][target_idx+i]['Close'])
                 test['Data'][0]['Day_' + str(i) + '_Profit'] = day2day_profit
-                if(INDEX_idx+i < len(INDEX['Data'])):
+                if(INDEX and INDEX_idx+i < len(INDEX['Data'])):
                     day2day_INDEX_change = self.get_profit_rate(INDEX['Data'][INDEX_idx]['Close'], INDEX['Data'][INDEX_idx+i]['Close'])
                     test['Data'][0]['Day_' + str(i) + '_INDEX_Change'] = day2day_INDEX_change
                     test['Data'][0]['Day_' + str(i) + '_Differ'] = day2day_profit-day2day_INDEX_change
@@ -610,8 +652,26 @@ class Stockholm(object):
         ## self.load_all_quote_info(all_quotes)
         self.load_all_quote_data(all_quotes, start_date, end_date)
         self.data_process(all_quotes)
-        
         self.data_export(all_quotes, output_types, None)
+
+    def data_statistics(self, data_all):
+        statistics = {}
+        for data in data_all:
+            if data['Data'][0]:
+                for day in range(len(data['Data'][0].keys())):
+                    key = 'Day_'+str(day+1)+'_Profit'
+                    profit = data['Data'][0].get(key)
+                    if(profit != None):
+                        statistics[key] = statistics.get(key,{})
+                        statistics[key]['num'] = statistics[key].get('num',0) + 1
+                        statistics[key]['profit_daily'] = statistics[key].get('profit_daily',0) + profit
+                        if(profit>0):
+                            statistics[key]['success_num'] = statistics[key].get('success_num',0) + 1
+                            # statistics['success_stock'].append(data['Name'])
+        for item in statistics.keys(): 
+            statistics[item]['success_rate'] = str(round(statistics[item]['success_num'] / statistics[item]['num'] *100,2))+'%'
+            statistics[item]['profit_daily'] = str(round(statistics[item]['profit_daily'] / statistics[item]['num'] * 100/int(item.replace('Day_','').replace('_Profit','')) ,3))+'%'
+        return statistics
 
     def data_test(self, target_date, test_range, output_types):
         ## loading test methods
@@ -655,15 +715,49 @@ class Stockholm(object):
         ## portfolio testing 
         all_quotes = self.file_data_load()
         target_date_time = datetime.datetime.strptime(target_date, "%Y-%m-%d")
+        data_all = []
         for i in range(test_range):
             date = (target_date_time - datetime.timedelta(days=i)).strftime("%Y-%m-%d")
             is_date_valid = self.check_date(all_quotes, date)
             if is_date_valid:
                 selected_quotes = self.quote_pick(all_quotes, date, methods)
                 res = self.profit_test(selected_quotes, date)
-                self.data_export(res, output_types, 'result_' + date)
+                if(len(res)>0):
+                    self.data_export(res, output_types, 'result_' + date)
+                    data_all.extend(res)
+        self.data_export(self.data_statistics(data_all), output_types, 'statistics_all')
+
+    def test(self):
+        symbol = '000422'
+        data = ts.get_hist_data(symbol,start='2021-10-15',end='2021-11-15')
+        rjson = json.loads(data.to_json())
+        dates = rjson["open"].keys()
+        quote_data = []
+        for date in dates:
+            # print(date)
+            d = {'Symbol': symbol}
+            d['Date'] = date
+            d['Open'] = rjson["open"][date]
+            d['Close'] = rjson["close"][date]
+            d['High'] = rjson["high"][date]
+            d['Low'] = rjson["low"][date]
+            d['Volume'] = rjson["volume"][date]
+            d['Price_Change'] =rjson["price_change"][date]
+            d['P_Change'] = rjson["p_change"][date]
+            d['MA_5'] = rjson["ma5"][date]
+            d['MA_10'] = rjson["ma10"][date]
+            d['MA_20'] = rjson["ma20"][date]
+            d['V_MA_5'] = rjson["v_ma5"][date]
+            d['V_MA_10'] = rjson["v_ma10"][date]
+            d['V_MA_20'] = rjson["v_ma20"][date]
+            quote_data.append(d)
+        quote_data.reverse()
+        aa = self.CurveMatch.match_Peak(self,quote_data)
+        print(aa)
 
     def run(self):
+        # self.test()
+        # return
         ## output types
         output_types = []
         if(self.output_type == "json"):
