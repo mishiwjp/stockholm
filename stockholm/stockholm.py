@@ -171,9 +171,9 @@ class Stockholm(object):
             x = increment = 19
             while x < len(quote_data):
                 high = max(map(lambda x: x['High'], quote_data[x-increment:x]))
-                high_index = list(map(lambda x: x['High'], quote_data[x-increment:x])).index(high)
+                high_index = list(map(lambda x: x['High'], quote_data[x-increment:x])).index(high)+x-increment
                 low = min(map(lambda x: x['Low'], quote_data[x-increment:x]))
-                low_index = list(map(lambda x: x['Low'], quote_data[x-increment:x])).index(low)
+                low_index = list(map(lambda x: x['Low'], quote_data[x-increment:x])).index(low)+x-increment
                 if(low_index<high_index):
                     condition = []
                     # 累计涨幅超过10%,最高点和最低点间隔超过2，当前和最高点间隔超过2
@@ -188,17 +188,21 @@ class Stockholm(object):
                     for data in quote_data[high_index+1:x]:
                         if data['Close']-data['Open']<=0:
                             green_count += 1
-                    # if(quote_data[x]['Date']=='2021-11-09'):
-                    #     print(1111)
-                    #     print(x>high_index+1)
-                    #     print(green_count)
-                    #     print(len(quote_data[high_index+1:x]))
                     # 回调阶段超过60%时间是绿的
                     condition.append(x>high_index+1 and (green_count)/len(quote_data[high_index+1:x])>0.6)
                     # 买入当日最高涨幅超过4%
                     condition.append((quote_data[x]['High']-quote_data[x]['Open'])/quote_data[x]['Open']>0.04)
                     # 前一天涨幅不超过5%
                     condition.append((quote_data[x-1]['Close']-quote_data[x-1]['Open'])/quote_data[x-1]['Open']<0.05)
+                    # if(quote_data[x]['Date']=='2022-04-01'):
+                    #     print(1111)
+                    #     print(quote_data[low_index])
+                    #     print(high)
+                    #     print(high_index)
+                    #     print(low)
+                    #     print(low_index)
+                    #     print(red_count)
+                    #     print(green_count)
                 else:
                    condition = [False]
                 print(condition)
@@ -743,12 +747,13 @@ class Stockholm(object):
         self.data_export(self.data_statistics(data_all), output_types, 'statistics_all')
 
     def devtest(self):
-        symbol = '000422'
+        # symbol = '000422'
+        symbol = '002624'
         # lg = bs.login()
         # data = bs.query_history_k_data_plus(symbol,
         #     "date,time,code,open,high,low,close,volume,amount",
         #     start_date='2021-10-15', end_date='2021-11-15',frequency="d", adjustflag="3")
-        data = ts.get_hist_data(symbol,start='2021-10-01',end='2021-11-15')
+        data = ts.get_hist_data(symbol,start='2022-03-02',end='2022-04-02')
         rjson = json.loads(data.to_json())
         dates = rjson["open"].keys()
         quote_data = []
