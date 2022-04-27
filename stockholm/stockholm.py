@@ -113,6 +113,10 @@ class Stockholm(object):
         val = ' and '.join(array)
         return val
 
+    def usedbcol(self,collection):
+        client = MongoClient(self.mongo_url, self.mongo_port)
+        db = client[self.database_name]
+        return db[collection]
     class KDJ():
         def _avg(self, array):
             length = len(array)
@@ -671,6 +675,8 @@ class Stockholm(object):
         ## self.load_all_quote_info(all_quotes)
         self.load_all_quote_data(all_quotes, start_date, end_date)
         self.data_process(all_quotes)
+        # col = self.usedbcol('all_quotes')
+        # col.insert_one(all_quotes)
         self.data_export(all_quotes, output_types, None)
 
     def data_statistics(self, data_all):
