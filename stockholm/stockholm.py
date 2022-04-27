@@ -12,12 +12,15 @@ from pymongo import MongoClient
 from multiprocessing.dummy import Pool as ThreadPool
 from functools import partial
 import tushare as ts
+import baostock as bs
 
 class Stockholm(object):
 
     def __init__(self, args):
         ## flag of if need to reload all stock data
         self.reload_data = args.reload_data
+        ## flag of if need to run the dev mode
+        self.develop = args.develop
         ## flag of if need to generate portfolio
         self.gen_portfolio = args.gen_portfolio
         ## type of output file json/csv or both
@@ -165,21 +168,23 @@ class Stockholm(object):
 
     class CurveMatch():
         def match_Peak(self,quote_data):
-            x = increment = 17
+            x = increment = 19
             while x < len(quote_data):
                 high = max(map(lambda x: x['High'], quote_data[x-increment:x]))
                 high_index = list(map(lambda x: x['High'], quote_data[x-increment:x])).index(high)
                 low = min(map(lambda x: x['Low'], quote_data[x-increment:x]))
                 low_index = list(map(lambda x: x['Low'], quote_data[x-increment:x])).index(low)
-                condition = []
                 if(low_index<high_index):
-                    condition.append(high-low>0.1*low)
+                    condition = []
+                    # 累计涨幅超过10%,最高点和最低点间隔超过2，当前和最高点间隔超过2
+                    condition.append(high-low>0.1*low and high_index-low_index>1 and x-high_index>1)
                     red_count = 0
                     green_count = 0
                     for data in quote_data[low_index:high_index+1]:
                         if data['Close']-data['Open']>0:
                             red_count += 1
-                    condition.append((red_count)/(high_index-low_index+1)>0.7)
+                    # 上升阶段超过60%时间是红的
+                    condition.append((red_count)/(high_index-low_index+1)>0.6)
                     for data in quote_data[high_index+1:x]:
                         if data['Close']-data['Open']<=0:
                             green_count += 1
@@ -188,11 +193,20 @@ class Stockholm(object):
                     #     print(x>high_index+1)
                     #     print(green_count)
                     #     print(len(quote_data[high_index+1:x]))
+                    # 回调阶段超过60%时间是绿的
                     condition.append(x>high_index+1 and (green_count)/len(quote_data[high_index+1:x])>0.6)
+                    # 买入当日最高涨幅超过4%
                     condition.append((quote_data[x]['High']-quote_data[x]['Open'])/quote_data[x]['Open']>0.04)
+                    # 前一天涨幅不超过5%
+                    condition.append((quote_data[x-1]['Close']-quote_data[x-1]['Open'])/quote_data[x-1]['Open']<0.05)
                 else:
-                    condition = [False,False,False,False]
-                quote_data[x]['match_Peak'] = condition[0] and condition[1] and condition[2] and condition[3]
+                   condition = [False]
+                print(condition)
+                if sum(condition)==len(condition):
+                    quote_data[x]['CurveMatch'] = quote_data[x].get('CurveMatch',[])
+                    quote_data[x]['CurveMatch'].append('peak')
+                if(quote_data[x].get('CurveMatch')):
+                    print(quote_data[x])
                 # if(quote_data[x]['Date']=='2021-11-09'):
                 #     print(condition[0])
                 #     print(condition[1])
@@ -201,6 +215,9 @@ class Stockholm(object):
 
                 x += 1
             return quote_data
+
+        def match_all_curve(self,quote_data):
+            self.match_Peak(quote_data)
 
     def load_all_quote_symbol(self):
         print("load_all_quote_symbol start..." + "\n")
@@ -447,7 +464,7 @@ class Stockholm(object):
             if('Data' in quote):
                 try:
                     kdj.getKDJ(quote['Data'])
-                    cm.match_Peak(quote['Data'])
+                    cm.match_all_curve(quote['Data'])
                 except KeyError as e:
                     print("Key Error")
                     print(e)
@@ -623,9 +640,7 @@ class Stockholm(object):
             test['MA_10'] = quote['Data'][target_idx]['MA_10']
             test['MA_20'] = quote['Data'][target_idx]['MA_20']
             test['MA_30'] = quote['Data'][target_idx]['MA_30']
-            test['match_Peak'] = quote['Data'][target_idx]['match_Peak']
-            if(test['match_Peak']!='false'):
-                print(test)
+            test['CurveMatch'] = quote['Data'][target_idx]['CurveMatch']
             test['Data'] = [{}]
 
             for i in range(1,11):
@@ -727,9 +742,13 @@ class Stockholm(object):
                     data_all.extend(res)
         self.data_export(self.data_statistics(data_all), output_types, 'statistics_all')
 
-    def test(self):
+    def devtest(self):
         symbol = '000422'
-        data = ts.get_hist_data(symbol,start='2021-10-15',end='2021-11-15')
+        # lg = bs.login()
+        # data = bs.query_history_k_data_plus(symbol,
+        #     "date,time,code,open,high,low,close,volume,amount",
+        #     start_date='2021-10-15', end_date='2021-11-15',frequency="d", adjustflag="3")
+        data = ts.get_hist_data(symbol,start='2021-10-01',end='2021-11-15')
         rjson = json.loads(data.to_json())
         dates = rjson["open"].keys()
         quote_data = []
@@ -752,12 +771,14 @@ class Stockholm(object):
             d['V_MA_20'] = rjson["v_ma20"][date]
             quote_data.append(d)
         quote_data.reverse()
-        aa = self.CurveMatch.match_Peak(self,quote_data)
-        print(aa)
+        aa = self.CurveMatch()
+        aa.match_all_curve(quote_data)
 
     def run(self):
-        # self.test()
-        # return
+        ## local develop mode
+        if(self.develop == 'Y'):
+            self.devtest()
+            return
         ## output types
         output_types = []
         if(self.output_type == "json"):

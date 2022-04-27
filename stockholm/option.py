@@ -9,6 +9,7 @@ def get_date_str(offset):
 
 _default = dict(
     reload_data = 'Y',
+    develop= 'N',
     gen_portfolio = 'N',
     output_type = 'json',
     charset = 'utf-8',
@@ -26,6 +27,8 @@ _default = dict(
 parser = argparse.ArgumentParser(description='A stock crawler and portfolio testing framework.') 
 
 parser.add_argument('--reload', type=str, default=_default['reload_data'], dest='reload_data', help='Reload the stock data or not (Y/N), Default: %s' % _default['reload_data'])
+
+parser.add_argument('--develop', type=str, default=_default['develop'], dest='develop', help='Run the dev mode or not (Y/N), Default: %s' % _default['develop'])
 
 parser.add_argument('--portfolio', type=str, default=_default['gen_portfolio'], dest='gen_portfolio', help='Generate the portfolio or not (Y/N), Default: %s' % _default['gen_portfolio'])
 

@@ -16,16 +16,23 @@ Stockholm
 
 还有些什么问题
 -------------
+目前接口已被废弃，需要替换。<br>
+经常需要重复获取数据，考虑替换存在数据库中。<br>
 行情数据目前来源于雅虎YQL，每日数据的更新时间不太稳定（一般在中国时间午夜左右）。<br>
 目前支持的技术指标还不多，还有一些指标如MACD和BOLL后续会增加。<br>
 在回测中，如果有在选定时间内发生过除权的股票，收益计算会有问题。<br>
 导出格式目前只支持CSV和JSON文本。MongoDB和MySQL会考虑后续加入。<br>
 
-环境
+在原版基础上改了什么
+-------------
+增加了曲线拟合，目前只有一种回调模式的曲线。<br>
+增加输出选股测试策略总结文件，存在statistics_all.json中。<br>
+
 -------------
 Python 3.4以上<br>
 [Requests](http://www.python-requests.org/en/latest/)<br>
 [PyMongo](http://api.mongodb.org/python/current/installation.html)<br>
+tushare
 OSX和CentOS已测。Windows尚未测试，输出路径可能有问题。<br>
 
 ```shell
@@ -57,6 +64,7 @@ python main.py [-h] [--reload {Y,N}] [--portfolio {Y,N}]
   --targetdate yyyy-MM-dd     测试选股策略的目标日期，默认值：当前系统日期
   --testrange NUM             测试日期范围天数，默认值：50
   --testfile PATH             测试文件路径，默认值：./portfolio_test.txt
+  --develop {Y,N}             执行本地测试模式
 ```
 
 可用数据/格式

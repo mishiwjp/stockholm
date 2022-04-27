@@ -6,4 +6,4 @@
 
 ##[测试方法3]:50<day(-1).{KDJ_J}<80 and day(-2).{KDJ_J}<day(-1).{KDJ_J} and day(0).{KDJ_J}<day(-1).{KDJ_J}
 
-[测试方法4]:day(0).{match_Peak}==True
+[测试方法4]:day(0).{CurveMatch}.index('peak')>=0
