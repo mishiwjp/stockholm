@@ -126,11 +126,8 @@ class Stockholm(object):
         if operation=='replace':
             db[collection].drop()
             if type(data) == list:
-                print(333)
-                print(data[0],data[1],type(data[0]),type(data[1]))
                 db[collection].insert_many(data)
             else:
-                print(4444)
                 db[collection].insert_one(data)
             if index:
                 indexs = db[collection].index_information()
@@ -695,7 +692,7 @@ class Stockholm(object):
         self.load_all_quote_data(all_quotes, start_date, end_date)
         self.data_process(all_quotes)
         self.data_export(all_quotes, output_types, None)
-        self.db_operate(all_quotes,'all_quotes','insert','Symbol')
+        self.db_operate(all_quotes,'all_quotes','replace','Symbol')
 
     def data_statistics(self, data_all):
         statistics = {}
@@ -769,10 +766,7 @@ class Stockholm(object):
                 if(len(res)>0):
                     self.data_export(res, output_types, 'result_' + date)
                     data_all.extend(res)
-                    data_dict = {'date':date,'result':res}
-                    print(1111,date,res)
-                    data_all_dict.extend(data_dict)
-        print(2222,data_all_dict)
+                    data_all_dict.append({'date':date,'result':res})
         if len(data_all_dict):
             self.db_operate(data_all_dict,'results','replace','date')
         data_statistics = self.data_statistics(data_all)
