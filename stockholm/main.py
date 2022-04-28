@@ -28,6 +28,11 @@ def main():
         print('Stockholm is starting...\n')
         stockh = Stockholm(args)
         stockh.run()
+        # aa = stockh.usedbcol('test')
+        # aa.insert_one({'name':'wjp',"list":[12,3,45,435,112121]})
+        # print(list(aa.find()))
+        # for item in aa.find():
+        #     print(item)
         print('Stockholm is done...\n')
 
 if __name__ == '__main__':

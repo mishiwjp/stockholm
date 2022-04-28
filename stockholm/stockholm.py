@@ -19,6 +19,8 @@ class Stockholm(object):
     def __init__(self, args):
         ## flag of if need to reload all stock data
         self.reload_data = args.reload_data
+        ## flag of if need to reprocess stock data
+        self.process_data = args.process_data
         ## flag of if need to run the dev mode
         self.develop = args.develop
         ## flag of if need to generate portfolio
@@ -117,6 +119,24 @@ class Stockholm(object):
         client = MongoClient(self.mongo_url, self.mongo_port)
         db = client[self.database_name]
         return db[collection]
+
+    def db_operate(self,data,collection,operation,index=''):
+        client = MongoClient(self.mongo_url, self.mongo_port)
+        db = client[self.database_name]
+        if operation=='replace':
+            db[collection].drop()
+            if type(data) == list:
+                print(333)
+                print(data[0],data[1],type(data[0]),type(data[1]))
+                db[collection].insert_many(data)
+            else:
+                print(4444)
+                db[collection].insert_one(data)
+            if index:
+                indexs = db[collection].index_information()
+                if '_id_' in indexs:
+                    db[collection].create_index([(index, 1)], unique=True)
+
     class KDJ():
         def _avg(self, array):
             length = len(array)
@@ -209,12 +229,11 @@ class Stockholm(object):
                     #     print(green_count)
                 else:
                    condition = [False]
-                print(condition)
                 if sum(condition)==len(condition):
                     quote_data[x]['CurveMatch'] = quote_data[x].get('CurveMatch',[])
                     quote_data[x]['CurveMatch'].append('peak')
-                if(quote_data[x].get('CurveMatch')):
-                    print(quote_data[x])
+                # if(quote_data[x].get('CurveMatch')):
+                #     print(quote_data[x])
                 # if(quote_data[x]['Date']=='2021-11-09'):
                 #     print(condition[0])
                 #     print(condition[1])
@@ -675,9 +694,8 @@ class Stockholm(object):
         ## self.load_all_quote_info(all_quotes)
         self.load_all_quote_data(all_quotes, start_date, end_date)
         self.data_process(all_quotes)
-        # col = self.usedbcol('all_quotes')
-        # col.insert_one(all_quotes)
         self.data_export(all_quotes, output_types, None)
+        self.db_operate(all_quotes,'all_quotes','insert','Symbol')
 
     def data_statistics(self, data_all):
         statistics = {}
@@ -741,6 +759,7 @@ class Stockholm(object):
         all_quotes = self.file_data_load()
         target_date_time = datetime.datetime.strptime(target_date, "%Y-%m-%d")
         data_all = []
+        data_all_dict = []
         for i in range(test_range):
             date = (target_date_time - datetime.timedelta(days=i)).strftime("%Y-%m-%d")
             is_date_valid = self.check_date(all_quotes, date)
@@ -750,7 +769,15 @@ class Stockholm(object):
                 if(len(res)>0):
                     self.data_export(res, output_types, 'result_' + date)
                     data_all.extend(res)
-        self.data_export(self.data_statistics(data_all), output_types, 'statistics_all')
+                    data_dict = {'date':date,'result':res}
+                    print(1111,date,res)
+                    data_all_dict.extend(data_dict)
+        print(2222,data_all_dict)
+        if len(data_all_dict):
+            self.db_operate(data_all_dict,'results','replace','date')
+        data_statistics = self.data_statistics(data_all)
+        self.data_export(data_statistics, output_types, 'statistics_all')
+        self.db_operate(data_statistics,'data_statistics','replace')
 
     def devtest(self):
         # symbol = '000422'
@@ -803,7 +830,13 @@ class Stockholm(object):
         if(self.reload_data == 'Y'):
             print("Start loading stock data...\n")
             self.data_load(self.start_date, self.end_date, output_types)
-            
+
+        ## process stock data 
+        if(self.process_data == 'Y' and self.reload_data == 'N'):
+            all_quotes = list(self.usedbcol('all_quotes').find())
+            self.data_process(all_quotes)
+            self.db_operate(all_quotes,'all_quotes','replace','Symbol')
+
         ## test & generate portfolio
         if(self.gen_portfolio == 'Y'):
             print("Start portfolio testing...\n")
