@@ -22,7 +22,7 @@ class Stockholm(object):
         ## flag of if need to reprocess stock data
         self.process_data = args.process_data
         ## flag of if need to run the dev mode
-        self.develop = args.develop
+        self.single_stock = args.run_single
         ## flag of if need to generate portfolio
         self.gen_portfolio = args.gen_portfolio
         ## type of output file json/csv or both
@@ -773,43 +773,20 @@ class Stockholm(object):
         self.data_export(data_statistics, output_types, 'statistics_all')
         self.db_operate(data_statistics,'data_statistics','replace')
 
-    def devtest(self):
-        # symbol = '000422'
-        symbol = '002624'
+    def run_single_stock(self):
         # lg = bs.login()
         # data = bs.query_history_k_data_plus(symbol,
         #     "date,time,code,open,high,low,close,volume,amount",
         #     start_date='2021-10-15', end_date='2021-11-15',frequency="d", adjustflag="3")
-        data = ts.get_hist_data(symbol,start='2022-03-02',end='2022-04-02')
-        rjson = json.loads(data.to_json())
-        dates = rjson["open"].keys()
-        quote_data = []
-        for date in dates:
-            # print(date)
-            d = {'Symbol': symbol}
-            d['Date'] = date
-            d['Open'] = rjson["open"][date]
-            d['Close'] = rjson["close"][date]
-            d['High'] = rjson["high"][date]
-            d['Low'] = rjson["low"][date]
-            d['Volume'] = rjson["volume"][date]
-            d['Price_Change'] =rjson["price_change"][date]
-            d['P_Change'] = rjson["p_change"][date]
-            d['MA_5'] = rjson["ma5"][date]
-            d['MA_10'] = rjson["ma10"][date]
-            d['MA_20'] = rjson["ma20"][date]
-            d['V_MA_5'] = rjson["v_ma5"][date]
-            d['V_MA_10'] = rjson["v_ma10"][date]
-            d['V_MA_20'] = rjson["v_ma20"][date]
-            quote_data.append(d)
-        quote_data.reverse()
-        aa = self.CurveMatch()
-        aa.match_all_curve(quote_data)
+        quote = {"Symbol":self.single_stock,"Name":'test'}
+        self.load_quote_data(quote,self.start_date, self.end_date,False,[])
+        self.data_process([quote])
+        print(quote)
 
     def run(self):
-        ## local develop mode
-        if(self.develop == 'Y'):
-            self.devtest()
+        ## test single stock
+        if(self.single_stock):
+            self.run_single_stock()
             return
         ## output types
         output_types = []

@@ -10,7 +10,7 @@ def get_date_str(offset):
 _default = dict(
     reload_data = 'N',
     process_data = 'N',
-    develop= 'N',
+    run_single= '002624.sz',
     gen_portfolio = 'N',
     output_type = 'json',
     charset = 'utf-8',
@@ -31,7 +31,7 @@ parser.add_argument('--reload', type=str, default=_default['reload_data'], dest=
 
 parser.add_argument('--process', type=str, default=_default['process_data'], dest='process_data', help='Process the stock data or not (Y/N), Default: %s' % _default['process_data'])
 
-parser.add_argument('--develop', type=str, default=_default['develop'], dest='develop', help='Run the dev mode or not (Y/N), Default: %s' % _default['develop'])
+parser.add_argument('--runsingle', type=str, default=_default['run_single'], dest='run_single', help='Run the single stock, Default: %s' % _default['run_single'])
 
 parser.add_argument('--portfolio', type=str, default=_default['gen_portfolio'], dest='gen_portfolio', help='Generate the portfolio or not (Y/N), Default: %s' % _default['gen_portfolio'])
 
