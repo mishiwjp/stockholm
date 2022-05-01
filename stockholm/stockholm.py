@@ -559,11 +559,16 @@ class Stockholm(object):
 
     def check_date(self, all_quotes, date):    
         is_date_valid = False
-        for quote in all_quotes:
-            if(quote['Symbol'] in self.index_array and 'Data' in quote):
-                for quote_data in quote['Data']:
-                    if(quote_data['Date'] == date):
-                        is_date_valid = True
+        if len(all_quotes) == 1:
+            for quote_data in all_quotes[0]['Data']:
+                if(quote_data['Date'] == date):
+                    is_date_valid = True
+        else:
+            for quote in all_quotes:
+                if(quote['Symbol'] in self.index_array and 'Data' in quote):
+                    for quote_data in quote['Data']:    
+                        if(quote_data['Date'] == date):
+                            is_date_valid = True
         if not is_date_valid:
             print(date + " is not valid...\n")
         return is_date_valid
@@ -663,7 +668,7 @@ class Stockholm(object):
             test['MA_10'] = quote['Data'][target_idx]['MA_10']
             test['MA_20'] = quote['Data'][target_idx]['MA_20']
             test['MA_30'] = quote['Data'][target_idx]['MA_30']
-            test['CurveMatch'] = quote['Data'][target_idx]['CurveMatch']
+            test['CurveMatch'] = quote['Data'][target_idx].get('CurveMatch',[])
             test['Data'] = [{}]
 
             for i in range(1,11):
@@ -742,9 +747,12 @@ class Stockholm(object):
                 if(line.startswith('##') or len(line.strip()) == 0):
                     continue
                 line = line.strip().strip('\n')
-                name = line[line.find('[')+1:line.find(']:')]
-                value = line[line.find(']:')+2:]
-                m = {'name': name, 'value_check': self.convert_value_check(value)}
+                method,buy_point,sell_point = line.split(',')
+                buy_point = buy_point.replace('[buy]:','')
+                sell_point = sell_point.replace('[sell]:','')
+                name = method[method.find('[')+1:method.find(']:')]
+                value = method[method.find(']:')+2:]
+                m = {'name': name, 'value_check': self.convert_value_check(value),'buy':self.convert_value_check(buy_point),'sell':self.convert_value_check(sell_point)}
                 methods.append(m)
                 
         if(len(methods) == 0):
@@ -761,7 +769,7 @@ class Stockholm(object):
             if is_date_valid:
                 selected_quotes = self.quote_pick(all_quotes, date, methods)
                 res = self.profit_test(selected_quotes, date)
-                if(len(res)>0):
+                if(len(selected_quotes)>0):
                     self.data_export(res, output_types, 'result_' + date)
                     data_all.extend(res)
                     data_all_dict.append({'date':date,'result':res})
@@ -780,10 +788,7 @@ class Stockholm(object):
         quote = {"Symbol":self.single_stock,"Name":'test'}
         self.load_quote_data(quote,self.start_date, self.end_date,False,[])
         self.data_process([quote])
-        temp_quote_list = [quote]
-        for quote in self.index_array:
-            temp_quote_list.append({"Symbol":quote,"Data":{}})
-        self.data_test(temp_quote_list,self.target_date, self.test_date_range, ['json'])
+        self.data_test([quote],self.target_date, self.test_date_range, ['json'])
         print(quote)
 
     def run(self):
