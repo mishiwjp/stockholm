@@ -10,7 +10,7 @@ def get_date_str(offset):
 _default = dict(
     reload_data = 'N',
     process_data = 'N',
-    run_single= '002624.sz',
+    run_single= '',
     gen_portfolio = 'N',
     output_type = 'json',
     charset = 'utf-8',

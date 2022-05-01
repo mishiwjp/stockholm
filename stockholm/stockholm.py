@@ -557,8 +557,7 @@ class Stockholm(object):
         print("file_data_load end... time cost: " + str(round(timeit.default_timer() - start)) + "s" + "\n")
         return all_quotes_data
 
-    def check_date(self, all_quotes, date):
-        
+    def check_date(self, all_quotes, date):    
         is_date_valid = False
         for quote in all_quotes:
             if(quote['Symbol'] in self.index_array and 'Data' in quote):
@@ -713,7 +712,7 @@ class Stockholm(object):
             statistics[item]['profit_daily'] = str(round(statistics[item]['profit_daily'] / statistics[item]['num'] * 100/int(item.replace('Day_','').replace('_Profit','')) ,3))+'%'
         return statistics
 
-    def data_test(self, target_date, test_range, output_types):
+    def data_test(self,all_quotes,target_date, test_range, output_types):
         ## loading test methods
         methods = []
         path = self.testfile_path
@@ -753,7 +752,6 @@ class Stockholm(object):
             return
 
         ## portfolio testing 
-        all_quotes = self.file_data_load()
         target_date_time = datetime.datetime.strptime(target_date, "%Y-%m-%d")
         data_all = []
         data_all_dict = []
@@ -774,6 +772,7 @@ class Stockholm(object):
         self.db_operate(data_statistics,'data_statistics','replace')
 
     def run_single_stock(self):
+        print('run single stock')
         # lg = bs.login()
         # data = bs.query_history_k_data_plus(symbol,
         #     "date,time,code,open,high,low,close,volume,amount",
@@ -781,6 +780,10 @@ class Stockholm(object):
         quote = {"Symbol":self.single_stock,"Name":'test'}
         self.load_quote_data(quote,self.start_date, self.end_date,False,[])
         self.data_process([quote])
+        temp_quote_list = [quote]
+        for quote in self.index_array:
+            temp_quote_list.append({"Symbol":quote,"Data":{}})
+        self.data_test(temp_quote_list,self.target_date, self.test_date_range, ['json'])
         print(quote)
 
     def run(self):
@@ -811,4 +814,5 @@ class Stockholm(object):
         ## test & generate portfolio
         if(self.gen_portfolio == 'Y'):
             print("Start portfolio testing...\n")
-            self.data_test(self.target_date, self.test_date_range, output_types)
+            all_quotes = self.file_data_load()
+            self.data_test(all_quotes,self.target_date, self.test_date_range, output_types)

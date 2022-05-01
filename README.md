@@ -1,4 +1,4 @@
-Stockholm
+Stockholm--已修改
 =======
 
 #### 一个股票数据（沪深）爬虫和选股策略测试框架，数据基于雅虎YQL和新浪财经。(已修改)
@@ -36,7 +36,7 @@ Stockholm
 Python 3.4以上<br>
 [Requests](http://www.python-requests.org/en/latest/)<br>
 [PyMongo](http://api.mongodb.org/python/current/installation.html)<br>
-tushare
+tushare<br>
 OSX和CentOS已测。Windows尚未测试，输出路径可能有问题。<br>
 
 ```shell
