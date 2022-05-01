@@ -1,0 +1,3 @@
+## when to buy
+
+[回调]:day(0).{Open}*1.04

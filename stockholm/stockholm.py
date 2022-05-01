@@ -209,14 +209,14 @@ class Stockholm(object):
                     for data in quote_data[high_index+1:x]:
                         if data['Close']-data['Open']<=0:
                             green_count += 1
-                    # 回调阶段超过60%时间是绿的
-                    condition.append(x>high_index+1 and (green_count)/len(quote_data[high_index+1:x])>0.6)
+                    # 回调阶段超过50%时间是绿的
+                    condition.append(x>high_index+1 and (green_count)/len(quote_data[high_index+1:x])>0.5)
                     # 买入当日最高涨幅超过4%
                     condition.append((quote_data[x]['High']-quote_data[x]['Open'])/quote_data[x]['Open']>0.04)
                     # 前一天涨幅不超过5%
                     condition.append((quote_data[x-1]['Close']-quote_data[x-1]['Open'])/quote_data[x-1]['Open']<0.05)
-                    # if(quote_data[x]['Date']=='2022-04-01'):
-                    #     print(1111)
+                    # if(quote_data[x]['Date']=='2021-03-15'):
+                    #     print(condition)
                     #     print(quote_data[low_index])
                     #     print(high)
                     #     print(high_index)
@@ -575,7 +575,6 @@ class Stockholm(object):
 
     def quote_pick(self, all_quotes, target_date, methods):
         print("quote_pick start..." + "\n")
-        
         start = timeit.default_timer()
 
         results = []
@@ -623,7 +622,7 @@ class Stockholm(object):
         print(str(data_issue_count) + " quotes of data is not available...\n")
         return results
 
-    def profit_test(self, selected_quotes, target_date):
+    def profit_test(self, selected_quotes, target_date, methods):
         print("profit_test start..." + "\n")
         start = timeit.default_timer()
         
@@ -670,12 +669,17 @@ class Stockholm(object):
             test['MA_30'] = quote['Data'][target_idx]['MA_30']
             test['CurveMatch'] = quote['Data'][target_idx].get('CurveMatch',[])
             test['Data'] = [{}]
-
+            custom_buy_point = 0
+            custom_sell_point = 0
             for i in range(1,11):
                 if(target_idx+i >= len(quote['Data'])):
                     print(quote['Name'] + " data is not available for " + str(i) + " day testing..." + "\n")
                     break
-
+                if(custom_buy_point == 0):
+                    print(methods)
+                    print(methods['buy'])
+                if(custom_sell_point == 0):
+                    print(methods['sell'])
                 day2day_profit = self.get_profit_rate(quote['Data'][target_idx]['Close'], quote['Data'][target_idx+i]['Close'])
                 test['Data'][0]['Day_' + str(i) + '_Profit'] = day2day_profit
                 if(INDEX and INDEX_idx+i < len(INDEX['Data'])):
@@ -709,8 +713,9 @@ class Stockholm(object):
                         statistics[key] = statistics.get(key,{})
                         statistics[key]['num'] = statistics[key].get('num',0) + 1
                         statistics[key]['profit_daily'] = statistics[key].get('profit_daily',0) + profit
+                        statistics[key]['success_num'] = statistics[key].get('success_num',0)
                         if(profit>0):
-                            statistics[key]['success_num'] = statistics[key].get('success_num',0) + 1
+                            statistics[key]['success_num'] += 1
                             # statistics['success_stock'].append(data['Name'])
         for item in statistics.keys(): 
             statistics[item]['success_rate'] = str(round(statistics[item]['success_num'] / statistics[item]['num'] *100,2))+'%'
@@ -768,7 +773,7 @@ class Stockholm(object):
             is_date_valid = self.check_date(all_quotes, date)
             if is_date_valid:
                 selected_quotes = self.quote_pick(all_quotes, date, methods)
-                res = self.profit_test(selected_quotes, date)
+                res = self.profit_test(selected_quotes, date, methods)
                 if(len(selected_quotes)>0):
                     self.data_export(res, output_types, 'result_' + date)
                     data_all.extend(res)

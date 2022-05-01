@@ -1,0 +1,5 @@
+## when to sell
+
+[跌太多]: day(0).{Open}*-1.05
+
+[涨太多]: day(0).{Open}*1.05
