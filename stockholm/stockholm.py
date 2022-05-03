@@ -46,6 +46,10 @@ class Stockholm(object):
             self.export_folder = args.store_path
         ## portfolio testing file path
         self.testfile_path = args.testfile_path
+        ## porfit buy file path
+        self.buyfile_path = args.buyfile_path
+        ## profit sell file path
+        self.sellfile_path = args.sellfile_path
         ## methods for back testing
         self.methods = args.methods
 
@@ -212,23 +216,20 @@ class Stockholm(object):
                     # 回调阶段超过50%时间是绿的
                     condition.append(x>high_index+1 and (green_count)/len(quote_data[high_index+1:x])>0.5)
                     # 买入当日最高涨幅超过4%
-                    condition.append((quote_data[x]['High']-quote_data[x]['Open'])/quote_data[x]['Open']>0.04)
+                    condition.append((quote_data[x]['High']-quote_data[x-1]['Close'])/quote_data[x-1]['Close']>0.04)
                     # 前一天涨幅不超过5%
                     condition.append((quote_data[x-1]['Close']-quote_data[x-1]['Open'])/quote_data[x-1]['Open']<0.05)
-                    # if(quote_data[x]['Date']=='2021-03-15'):
-                    #     print(condition)
-                    #     print(quote_data[low_index])
-                    #     print(high)
-                    #     print(high_index)
-                    #     print(low)
-                    #     print(low_index)
-                    #     print(red_count)
-                    #     print(green_count)
                 else:
                    condition = [False]
+                quote_data[x]['CurveMatch'] = quote_data[x].get('CurveMatch',[])
                 if sum(condition)==len(condition):
-                    quote_data[x]['CurveMatch'] = quote_data[x].get('CurveMatch',[])
                     quote_data[x]['CurveMatch'].append('peak')
+                else:
+                    if 'peak' in quote_data[x]['CurveMatch']:
+                       quote_data[x]['CurveMatch'].remove('peak') 
+                if(quote_data[x]['Date']=='2022-04-27' and quote_data[x]['High']==24.44):
+                    print(condition)
+                    print(quote_data[x])
                 # if(quote_data[x].get('CurveMatch')):
                 #     print(quote_data[x])
                 # if(quote_data[x]['Date']=='2021-11-09'):
@@ -335,6 +336,19 @@ class Stockholm(object):
 
     def load_quote_data(self, quote, start_date, end_date, is_retry, counter):
         ## print("load_quote_data start..." + "\n")
+        # baostock
+        # lg = bs.login()
+        # rs = bs.query_history_k_data_plus("sh.600000",
+        #     "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST",
+        #     start_date='2017-07-01', end_date='2017-12-31',
+        #     frequency="d", adjustflag="3")
+        # data_list = []
+        # while (rs.error_code == '0') & rs.next():
+        #     # 获取一条记录，将记录合并在一起
+        #     data_list.append(rs.get_row_data())
+        # rjson = json.loads(data_list.to_json())
+        # print(rjson)
+        # return
         start = timeit.default_timer()
         if(quote is not None and quote['Symbol'] is not None):
             try:
@@ -622,14 +636,37 @@ class Stockholm(object):
         print(str(data_issue_count) + " quotes of data is not available...\n")
         return results
 
-    def profit_test(self, selected_quotes, target_date, methods):
+    def profit_test(self, selected_quotes, target_date):
         print("profit_test start..." + "\n")
+        buypath = self.buyfile_path
+        sellpath = self.sellfile_path
         start = timeit.default_timer()
-        
+        sell_points = []
+        buy_points = []
         results = []
         INDEX = None
         INDEX_idx = 0
 
+        if os.path.exists(sellpath):
+            f = io.open(sellpath, 'r', encoding='utf-8')
+            for line in f:
+                if(line.startswith('##') or len(line.strip()) == 0):
+                    continue
+                line = line.strip().strip('\n')
+                name = line[line.find('[')+1:line.find(']:')]
+                value = line[line.find(']:')+2:]
+                sell_point = {'name': name, 'value_check': self.convert_value_check(value)}
+                sell_points.append(sell_point)
+        if os.path.exists(buypath):
+            f = io.open(buypath, 'r', encoding='utf-8')
+            for line in f:
+                if(line.startswith('##') or len(line.strip()) == 0):
+                    continue
+                line = line.strip().strip('\n')
+                name = line[line.find('[')+1:line.find(']:')]
+                value = line[line.find(']:')+2:]
+                buy_point = {'name': name, 'value_check': self.convert_value_check(value)}
+                buy_points.append(buy_point)
         for quote in selected_quotes:
             if(quote['Symbol'] == self.sh000300['Symbol']):
                 INDEX = quote
@@ -675,18 +712,26 @@ class Stockholm(object):
                 if(target_idx+i >= len(quote['Data'])):
                     print(quote['Name'] + " data is not available for " + str(i) + " day testing..." + "\n")
                     break
+                if(custom_sell_point == 0 and custom_buy_point!=0):
+                    for sell_point in sell_points:
+                        value_check = eval(sell_point['value_check'])
+                        if(quote['Data'][target_idx+i-1]['Low']<=value_check<=quote['Data'][target_idx+i-1]['High']):
+                            custom_sell_point = value_check
+                        else:
+                            if i==2 and value_check<quote['Data'][target_idx+i-2]['Close']:
+                                custom_sell_point = quote['Data'][target_idx+i-1]['Open']
                 if(custom_buy_point == 0):
-                    print(methods)
-                    print(methods['buy'])
-                if(custom_sell_point == 0):
-                    print(methods['sell'])
+                    for buy_point in buy_points:
+                        value_check = eval(buy_point['value_check'])
+                        if(quote['Data'][target_idx+i-1]['Low']<=value_check<=quote['Data'][target_idx+i-1]['High']):
+                            custom_buy_point = value_check
                 day2day_profit = self.get_profit_rate(quote['Data'][target_idx]['Close'], quote['Data'][target_idx+i]['Close'])
                 test['Data'][0]['Day_' + str(i) + '_Profit'] = day2day_profit
                 if(INDEX and INDEX_idx+i < len(INDEX['Data'])):
                     day2day_INDEX_change = self.get_profit_rate(INDEX['Data'][INDEX_idx]['Close'], INDEX['Data'][INDEX_idx+i]['Close'])
                     test['Data'][0]['Day_' + str(i) + '_INDEX_Change'] = day2day_INDEX_change
                     test['Data'][0]['Day_' + str(i) + '_Differ'] = day2day_profit-day2day_INDEX_change
-            
+            test['Data'][0]['Custom_Profit'] = self.get_profit_rate(custom_buy_point,custom_sell_point)
             results.append(test)
             
         print("profit_test end... time cost: " + str(round(timeit.default_timer() - start)) + "s" + "\n")
@@ -706,20 +751,21 @@ class Stockholm(object):
         statistics = {}
         for data in data_all:
             if data['Data'][0]:
-                for day in range(len(data['Data'][0].keys())):
-                    key = 'Day_'+str(day+1)+'_Profit'
+                for day in data['Data'][0].keys():
+                    # key = 'Day_'+str(day+1)+'_Profit'
+                    key = day
                     profit = data['Data'][0].get(key)
                     if(profit != None):
                         statistics[key] = statistics.get(key,{})
                         statistics[key]['num'] = statistics[key].get('num',0) + 1
-                        statistics[key]['profit_daily'] = statistics[key].get('profit_daily',0) + profit
+                        statistics[key]['profit'] = statistics[key].get('profit',0) + profit
                         statistics[key]['success_num'] = statistics[key].get('success_num',0)
                         if(profit>0):
                             statistics[key]['success_num'] += 1
                             # statistics['success_stock'].append(data['Name'])
         for item in statistics.keys(): 
             statistics[item]['success_rate'] = str(round(statistics[item]['success_num'] / statistics[item]['num'] *100,2))+'%'
-            statistics[item]['profit_daily'] = str(round(statistics[item]['profit_daily'] / statistics[item]['num'] * 100/int(item.replace('Day_','').replace('_Profit','')) ,3))+'%'
+            statistics[item]['profit'] = str(round(statistics[item]['profit'] / statistics[item]['num'] * 100 ,3))+'%'
         return statistics
 
     def data_test(self,all_quotes,target_date, test_range, output_types):
@@ -752,12 +798,9 @@ class Stockholm(object):
                 if(line.startswith('##') or len(line.strip()) == 0):
                     continue
                 line = line.strip().strip('\n')
-                method,buy_point,sell_point = line.split(',')
-                buy_point = buy_point.replace('[buy]:','')
-                sell_point = sell_point.replace('[sell]:','')
-                name = method[method.find('[')+1:method.find(']:')]
-                value = method[method.find(']:')+2:]
-                m = {'name': name, 'value_check': self.convert_value_check(value),'buy':self.convert_value_check(buy_point),'sell':self.convert_value_check(sell_point)}
+                name = line[line.find('[')+1:line.find(']:')]
+                value = line[line.find(']:')+2:]
+                m = {'name': name, 'value_check': self.convert_value_check(value)}
                 methods.append(m)
                 
         if(len(methods) == 0):
@@ -773,7 +816,7 @@ class Stockholm(object):
             is_date_valid = self.check_date(all_quotes, date)
             if is_date_valid:
                 selected_quotes = self.quote_pick(all_quotes, date, methods)
-                res = self.profit_test(selected_quotes, date, methods)
+                res = self.profit_test(selected_quotes, date)
                 if(len(selected_quotes)>0):
                     self.data_export(res, output_types, 'result_' + date)
                     data_all.extend(res)
@@ -786,15 +829,10 @@ class Stockholm(object):
 
     def run_single_stock(self):
         print('run single stock')
-        # lg = bs.login()
-        # data = bs.query_history_k_data_plus(symbol,
-        #     "date,time,code,open,high,low,close,volume,amount",
-        #     start_date='2021-10-15', end_date='2021-11-15',frequency="d", adjustflag="3")
         quote = {"Symbol":self.single_stock,"Name":'test'}
         self.load_quote_data(quote,self.start_date, self.end_date,False,[])
         self.data_process([quote])
         self.data_test([quote],self.target_date, self.test_date_range, ['json'])
-        print(quote)
 
     def run(self):
         ## test single stock
@@ -824,5 +862,7 @@ class Stockholm(object):
         ## test & generate portfolio
         if(self.gen_portfolio == 'Y'):
             print("Start portfolio testing...\n")
-            all_quotes = self.file_data_load()
+            if "all_quotes" not in dir():
+                # all_quotes = self.file_data_load()
+                all_quotes = list(self.usedbcol('all_quotes').find())
             self.data_test(all_quotes,self.target_date, self.test_date_range, output_types)
