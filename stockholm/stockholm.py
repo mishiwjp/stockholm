@@ -711,15 +711,22 @@ class Stockholm(object):
             for i in range(1,11):
                 if(target_idx+i >= len(quote['Data'])):
                     print(quote['Name'] + " data is not available for " + str(i) + " day testing..." + "\n")
+                    if custom_sell_point==0:
+                        # print(4444)
+                        custom_sell_point = quote['Data'][target_idx+i-1]['Open']
                     break
                 if(custom_sell_point == 0 and custom_buy_point!=0):
                     for sell_point in sell_points:
                         value_check = eval(sell_point['value_check'])
                         if(quote['Data'][target_idx+i-1]['Low']<=value_check<=quote['Data'][target_idx+i-1]['High']):
+                            # print (555)
                             custom_sell_point = value_check
                         else:
-                            if i==2 and value_check<quote['Data'][target_idx+i-2]['Close']:
+                            if i==2 and (custom_buy_point<=value_check<=quote['Data'][target_idx+i-2]['Close'] or quote['Data'][target_idx+i-2]['Close']<=value_check<=custom_buy_point):
+                                # print(6666)
                                 custom_sell_point = quote['Data'][target_idx+i-1]['Open']
+                            if i==11:
+                                custom_sell_point = quote['Data'][target_idx+i-1]['Close']
                 if(custom_buy_point == 0):
                     for buy_point in buy_points:
                         value_check = eval(buy_point['value_check'])
@@ -731,6 +738,10 @@ class Stockholm(object):
                     day2day_INDEX_change = self.get_profit_rate(INDEX['Data'][INDEX_idx]['Close'], INDEX['Data'][INDEX_idx+i]['Close'])
                     test['Data'][0]['Day_' + str(i) + '_INDEX_Change'] = day2day_INDEX_change
                     test['Data'][0]['Day_' + str(i) + '_Differ'] = day2day_profit-day2day_INDEX_change
+            # print(2222)
+            # print(quote['Data'][target_idx])
+            # print(custom_buy_point)
+            # print(custom_sell_point)
             test['Data'][0]['Custom_Profit'] = self.get_profit_rate(custom_buy_point,custom_sell_point)
             results.append(test)
             

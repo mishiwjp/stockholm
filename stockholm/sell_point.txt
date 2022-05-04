@@ -1,4 +1,4 @@
-## when to sell
+## when to sell,同时出现多个卖点取最后一个
 
 [跌太多]: day(0).{Close}*0.95
 
