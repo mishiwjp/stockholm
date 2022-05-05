@@ -363,6 +363,7 @@ class Stockholm(object):
                         d['V_MA_5'] = rjson["v_ma5"][date]
                         d['V_MA_10'] = rjson["v_ma10"][date]
                         d['V_MA_20'] = rjson["v_ma20"][date]
+                        d['Turn_Over'] = rjson["turnover"][date]
                         temp_data.append(d)
                     temp_data.reverse()
                     quote['Data'] = temp_data
@@ -454,6 +455,14 @@ class Stockholm(object):
                             d['Low'] = float(quote_data['Low'])
                             d['Volume'] = int(quote_data['Volume'])
                             d['Date'] = quote_data['Date']
+                            d['MA_5'] = float(quote_data['MA_5'])
+                            d['MA_10'] = float(quote_data['MA_10'])
+                            d['MA_20'] = float(quote_data['MA_20'])
+                            d['V_MA_5'] = float(quote_data['V_MA_5'])
+                            d['V_MA_10'] = float(quote_data['V_MA_10'])
+                            d['V_MA_20'] = float(quote_data['V_MA_20'])
+                            d['P_Change'] = float(quote_data['P_Change'])
+                            d['Turn_Over'] = float(quote_data['Turn_Over'])
                             temp_data.append(d)
                     quote['Data'] = temp_data
                 except KeyError as e:
@@ -473,43 +482,43 @@ class Stockholm(object):
                             quote_data['Change'] = None
                             quote_data['Vol_Change'] = None
                             
-                    last_5_array = []
-                    last_10_array = []
-                    last_20_array = []
-                    last_30_array = []
-                    for i, quote_data in enumerate(quote['Data']):
-                        last_5_array.append(quote_data['Close'])
-                        last_10_array.append(quote_data['Close'])
-                        last_20_array.append(quote_data['Close'])
-                        last_30_array.append(quote_data['Close'])
-                        quote_data['MA_5'] = None
-                        quote_data['MA_10'] = None
-                        quote_data['MA_20'] = None
-                        quote_data['MA_30'] = None
+                    # last_5_array = []
+                    # last_10_array = []
+                    # last_20_array = []
+                    # last_30_array = []
+                    # for i, quote_data in enumerate(quote['Data']):
+                    #     last_5_array.append(quote_data['Close'])
+                    #     last_10_array.append(quote_data['Close'])
+                    #     last_20_array.append(quote_data['Close'])
+                    #     last_30_array.append(quote_data['Close'])
+                    #     quote_data['MA_5'] = None
+                    #     quote_data['MA_10'] = None
+                    #     quote_data['MA_20'] = None
+                    #     quote_data['MA_30'] = None
                         
-                        if(i < 4):
-                            continue
-                        if(len(last_5_array) == 5):
-                            last_5_array.pop(0)
-                        quote_data['MA_5'] = self.get_MA(last_5_array)
+                    #     if(i < 4):
+                    #         continue
+                    #     if(len(last_5_array) == 5):
+                    #         last_5_array.pop(0)
+                    #     quote_data['MA_5'] = self.get_MA(last_5_array)
                         
-                        if(i < 9):
-                            continue
-                        if(len(last_10_array) == 10):
-                            last_10_array.pop(0)
-                        quote_data['MA_10'] = self.get_MA(last_10_array)
+                    #     if(i < 9):
+                    #         continue
+                    #     if(len(last_10_array) == 10):
+                    #         last_10_array.pop(0)
+                    #     quote_data['MA_10'] = self.get_MA(last_10_array)
                         
-                        if(i < 19):
-                            continue
-                        if(len(last_20_array) == 20):
-                            last_20_array.pop(0)
-                        quote_data['MA_20'] = self.get_MA(last_20_array)
+                    #     if(i < 19):
+                    #         continue
+                    #     if(len(last_20_array) == 20):
+                    #         last_20_array.pop(0)
+                    #     quote_data['MA_20'] = self.get_MA(last_20_array)
                         
-                        if(i < 29):
-                            continue
-                        if(len(last_30_array) == 30):
-                            last_30_array.pop(0)
-                        quote_data['MA_30'] = self.get_MA(last_30_array)
+                    #     if(i < 29):
+                    #         continue
+                    #     if(len(last_30_array) == 30):
+                    #         last_30_array.pop(0)
+                    #     quote_data['MA_30'] = self.get_MA(last_30_array)
                         
                         
                 except KeyError as e:
@@ -723,7 +732,7 @@ class Stockholm(object):
             test['MA_5'] = quote['Data'][target_idx]['MA_5']
             test['MA_10'] = quote['Data'][target_idx]['MA_10']
             test['MA_20'] = quote['Data'][target_idx]['MA_20']
-            test['MA_30'] = quote['Data'][target_idx]['MA_30']
+            # test['MA_30'] = quote['Data'][target_idx]['MA_30']
             test['CurveMatch'] = quote['Data'][target_idx].get('CurveMatch',[])
             test['Data'] = [{}]
             custom_buy_point = 0
