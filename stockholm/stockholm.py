@@ -12,7 +12,7 @@ from pymongo import MongoClient
 from multiprocessing.dummy import Pool as ThreadPool
 from functools import partial
 import tushare as ts
-import baostock as bs
+# import baostock as bs
 import pandas as pd
 
 class Stockholm(object):
@@ -339,7 +339,7 @@ class Stockholm(object):
         ## print("load_quote_data start..." + "\n")
         start = timeit.default_timer()
         if(quote is not None and quote['Symbol'] is not None):
-            if False:
+            if True:
                 try:
                     # open high close low volume price_change p_change ma5 ma10 ma20 v_ma5 v_ma10 v_ma20
                     df = ts.get_hist_data(quote['Symbol'][0:6],start=start_date,end=end_date)
@@ -374,7 +374,6 @@ class Stockholm(object):
                         time.sleep(2)
                         self.load_quote_data(quote, start_date, end_date, True, counter) ## retry once for network issue
             else:
-                lg = bs.login()
                 rs = bs.query_history_k_data_plus(quote['Symbol'][-2:]+'.'+quote['Symbol'][0:6],
                     "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST",
                     start_date=start_date, end_date=end_date,
@@ -383,7 +382,29 @@ class Stockholm(object):
                 while (rs.error_code == '0') & rs.next():
                     data_list.append(rs.get_row_data())
                 result = pd.DataFrame(data_list,columns=rs.fields)
-                print(result.to_json(orient='records'))
+                rjson = json.loads(result.to_json(orient='records'))
+                temp_data = []
+                for item in rjson:
+                    d = {'Symbol': item['code']}
+                    d['Date'] = item['date']
+                    d['Open'] = item['open']
+                    d['Close'] = item['close']
+                    d['High'] = item['high']
+                    d['Low'] = item['low']
+                    d['Volume'] = item['volume']
+                    d['Price_Change'] =''
+                    d['P_Change'] = item['pctChg']
+                    d['MA_5'] = ''
+                    d['MA_10'] = ''
+                    d['MA_20'] = ''
+                    d['V_MA_5'] = ''
+                    d['V_MA_10'] = ''
+                    d['V_MA_20'] = ''
+                    temp_data.append(d)
+                # temp_data.reverse()
+                quote['Data'] = temp_data
+                if(not is_retry):
+                    counter.append(1)          
             print("load_quote_data " + quote['Symbol'] + "/" + quote['Name'] + " end..." + "\n")
             ## print("time cost: " + str(round(timeit.default_timer() - start)) + "s." + "\n")
             ## print("total count: " + str(len(counter)) + "\n")
@@ -395,12 +416,13 @@ class Stockholm(object):
         start = timeit.default_timer()
 
         counter = []
+        # lg = bs.login()
         mapfunc = partial(self.load_quote_data, start_date=start_date, end_date=end_date, is_retry=False, counter=counter)
         pool = ThreadPool(self.thread)
         pool.map(mapfunc, all_quotes) ## multi-threads executing
         pool.close() 
         pool.join()
-
+        # bs.logout()
         print("load_all_quote_data end... time cost: " + str(round(timeit.default_timer() - start)) + "s" + "\n")
         return all_quotes
 
@@ -839,7 +861,9 @@ class Stockholm(object):
     def run_single_stock(self):
         print('run single stock')
         quote = {"Symbol":self.single_stock,"Name":'test'}
+        # lg = bs.login()
         self.load_quote_data(quote,self.start_date, self.end_date,False,[])
+        # bs.logout()
         self.data_process([quote])
         self.data_test([quote],self.target_date, self.test_date_range, ['json'])
 
