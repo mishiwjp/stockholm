@@ -437,8 +437,8 @@ class Stockholm(object):
 
             if(quote['Symbol'].startswith('300')):
                 quote['Type'] = '创业板'
-            elif(quote['Symbol'].startswith('002')):
-                quote['Type'] = '中小板'
+            elif(quote['Symbol'].startswith('688')):
+                quote['Type'] = '科创板'
             else:
                 quote['Type'] = '主板'
             
@@ -463,6 +463,8 @@ class Stockholm(object):
                             d['V_MA_20'] = float(quote_data['V_MA_20'])
                             d['P_Change'] = float(quote_data['P_Change'])
                             d['Turn_Over'] = float(quote_data['Turn_Over'])
+                            d['Type'] = quote_data['Type']
+                            d['Symbol'] = quote_data['Symbol']
                             temp_data.append(d)
                     quote['Data'] = temp_data
                 except KeyError as e:
